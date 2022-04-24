@@ -20,41 +20,56 @@
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
 #include "task.h"
+#include "main.h"
 #include "cmsis_os.h"
 
+/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
 #include "stm32l4xx_hal.h"
 //#include "mxconstants.h"
 #include "usbd_core.h"
 #include "usb_device.h"
+#include "fatfs.h"
 
 /* USER CODE END Includes */
 
-/* Variables -----------------------------------------------------------------*/
-osThreadId appTaskHandle;
-osThreadId usbTaskHandle;
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
 
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 
+FIL                       File;
+FATFS                     FatFs;
+
 /* USER CODE END Variables */
+osThreadId apptaskHandle;
+osThreadId usbTaskHandle;
+osMutexId qspiMutexHandle;
 
-/* Function prototypes -------------------------------------------------------*/
-void appTaskBody(void const * argument);
-void usbTaskBody(void const * argument);
-
-extern void MX_USB_DEVICE_Init(void);
-void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
-
+/* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
 void Error_Handler(void);
-
+extern USBD_HandleTypeDef hUsbDeviceFS;
 /* USER CODE END FunctionPrototypes */
 
 void appTaskBody(void const * argument);
 void usbTaskBody(void const * argument);
-extern USBD_HandleTypeDef hUsbDeviceFS;
+
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -83,6 +98,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* definition and creation of qspiMutex */
+  osMutexDef(qspiMutex);
+  qspiMutexHandle = osMutexCreate(osMutex(qspiMutex));
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -96,10 +115,14 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
   /* Create the thread(s) */
-  /* definition and creation of appTask */
-  osThreadDef(appTask, appTaskBody, osPriorityNormal, 0, 4096);
-  appTaskHandle = osThreadCreate(osThread(appTask), NULL);
+  /* definition and creation of apptask */
+  osThreadDef(apptask, appTaskBody, osPriorityNormal, 0, 4096);
+  apptaskHandle = osThreadCreate(osThread(apptask), NULL);
 
   /* definition and creation of usbTask */
   osThreadDef(usbTask, usbTaskBody, osPriorityHigh, 0, 256);
@@ -109,30 +132,82 @@ void MX_FREERTOS_Init(void) {
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
 }
 
-/* appTaskBody function */
+/* USER CODE BEGIN Header_appTaskBody */
+/**
+  * @brief  Function implementing the apptask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_appTaskBody */
 void appTaskBody(void const * argument)
 {
   /* init code for USB_DEVICE */
-  //MX_USB_DEVICE_Init();
-
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN appTaskBody */
+
+  /* Wait for the qspiMutex */
+  osMutexWait(qspiMutexHandle, osWaitForever);
+
+  /* Register the file system object to the FatFs module */
+  if(f_mount(&FatFs, (TCHAR const*)USERPath, 1) != FR_OK)
+  {
+    /* FatFs Initialization Error */
+//    if (f_mkfs((TCHAR const*)USER_Path, 0, 128) != FR_OK)
+//    {
+//      Error_Handler();
+//    }
+//    else {
+//      /* Second trial to register the file system object */
+//      if(f_mount(&FatFs, (TCHAR const*)USER_Path, 1) != FR_OK)
+//      {
+//        Error_Handler();
+//      }
+//    }
+  }
+
+  /* FatFS file write test */
+  if(f_open(&File, "FATFSOK", FA_CREATE_NEW | FA_WRITE) == FR_OK)
+  {
+    f_printf(&File, "FatFS is working properly.\n");
+    f_close(&File);
+  }
+
+  /* Release the qspiMutex */
+  osMutexRelease(qspiMutexHandle);
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(100);
+    //osDelay(100);
 
-    /* GREEN LED TOGGLE */
-    HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
+    /* GREEN LED ON */
+    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+
+    /* Wait for the qspiMutex */
+    osMutexWait(qspiMutexHandle, osWaitForever);
+
+    /* You can access qspi again here */
+
+    osDelay(1);
+
+    /* Release the qspiMutex */
+    osMutexRelease(qspiMutexHandle);
+
+    /* GREEN LED OFF */
+    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
   }
   /* USER CODE END appTaskBody */
 }
 
-/* usbTaskBody function */
+/* USER CODE BEGIN Header_usbTaskBody */
+/**
+* @brief Function implementing the usbTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_usbTaskBody */
 void usbTaskBody(void const * argument)
 {
   /* USER CODE BEGIN usbTaskBody */
@@ -156,6 +231,9 @@ void usbTaskBody(void const * argument)
     }
     if(USB_VBUS_counter >= 5)
     {
+      /* Wait for the qspiMutex */
+      osMutexWait(qspiMutexHandle, osWaitForever);
+
       /* Initialize USB peripheral */
       MX_USB_DEVICE_Init();
 
@@ -180,6 +258,9 @@ void usbTaskBody(void const * argument)
       /* Deinitialize USB peripheral */
       USBD_DeInit(&hUsbDeviceFS);
 
+      /* Release the qspiMutex */
+      osMutexRelease(qspiMutexHandle);
+
       /* RED LED OFF */
       HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
     }
@@ -189,6 +270,7 @@ void usbTaskBody(void const * argument)
   /* USER CODE END usbTaskBody */
 }
 
+/* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
 /**
@@ -205,5 +287,3 @@ void usbTaskBody(void const * argument)
 //}
 
 /* USER CODE END Application */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
