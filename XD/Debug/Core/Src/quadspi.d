@@ -29,6 +29,7 @@ Core/Src/quadspi.o: ../Core/Src/quadspi.c ../Core/Inc/quadspi.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_qspi.h \
+ ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sai.h \
  ../Core/Inc/n25q128a.h
 ../Core/Inc/quadspi.h:
 ../Core/Inc/main.h:
@@ -62,4 +63,5 @@ Core/Src/quadspi.o: ../Core/Src/quadspi.c ../Core/Inc/quadspi.h \
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_pwr_ex.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_qspi.h:
+../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sai.h:
 ../Core/Inc/n25q128a.h:

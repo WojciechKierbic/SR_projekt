@@ -18,14 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
-#include "fatfs.h"
-#include "i2c.h"
+#include "dma.h"
 #include "quadspi.h"
 #include "sai.h"
 #include "usb_device.h"
 #include "gpio.h"
-
+#include "stm32l476g_discovery.h"
+#include "cs43l22.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -38,6 +37,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define AUDIO_FILE_ADDRESS   0x08080000
+#define AUDIO_FILE_SIZE      (180*1024)
+#define PLAY_HEADER          0x2C
+#define PLAY_BUFF_SIZE       4096
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,13 +51,14 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint16_t                      PlayBuff[PLAY_BUFF_SIZE];
+__IO int16_t                 UpdatePointer = -1;
+extern AUDIO_DrvTypeDef            *audio_drv;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
-void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -71,7 +75,7 @@ void MX_FREERTOS_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	uint32_t PlaybackPosition   = PLAY_BUFF_SIZE + PLAY_HEADER;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -80,7 +84,10 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  BSP_LED_Init(LED5);
 
+   /* Check if the buffer has been loaded in flash */
+   if(*((uint64_t *)AUDIO_FILE_ADDRESS) != 0x017EFE2446464952 ) Error_Handler();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -96,30 +103,57 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_QUADSPI_Init();
-  MX_FATFS_Init();
-  MX_I2C1_Init();
+  MX_DMA_Init();
   MX_SAI1_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+  /* Initialize the data buffer */
+    for(int i=0; i < PLAY_BUFF_SIZE; i+=2)
+    {
+      PlayBuff[i]=*((__IO uint16_t *)(AUDIO_FILE_ADDRESS + PLAY_HEADER + i));
+    }
 
-  /* USER CODE END 2 */
+    /* Start the playback */
+    if(0 != audio_drv->Play(AUDIO_I2C_ADDRESS, NULL, 0))
+    {
+      Error_Handler();
+    }
+    if(HAL_OK != HAL_SAI_Transmit_DMA(&hsai_BlockA1, (uint8_t *)PlayBuff, PLAY_BUFF_SIZE))
+    {
+      Error_Handler();
+    }
 
-  /* Call init function for freertos objects (in freertos.c) */
-  MX_FREERTOS_Init();
+    /* Start loopback */
+    while(1)
+    {
+      BSP_LED_Toggle(LED5);
 
-  /* Start scheduler */
-  osKernelStart();
+      /* Wait a callback event */
+      while(UpdatePointer==-1);
 
-  /* We should never get here as control is now taken by the scheduler */
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+      int position = UpdatePointer;
+      UpdatePointer = -1;
 
-    /* USER CODE BEGIN 3 */
+      /* Update the first or the second part of the buffer */
+      for(int i = 0; i < PLAY_BUFF_SIZE/2; i++)
+      {
+        PlayBuff[i+position] = *(uint16_t *)(AUDIO_FILE_ADDRESS + PlaybackPosition);
+        PlaybackPosition+=2;
+      }
+
+      /* check the end of the file */
+      if((PlaybackPosition+PLAY_BUFF_SIZE/2) > AUDIO_FILE_SIZE)
+      {
+        PlaybackPosition = PLAY_HEADER;
+      }
+
+      if(UpdatePointer != -1)
+      {
+        /* Buffer update time is too long compare to the data transfer time */
+        Error_Handler();
+      }
+    }
   }
-  /* USER CODE END 3 */
-}
 
 /**
   * @brief System Clock Configuration
@@ -155,7 +189,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 1;
   RCC_OscInitStruct.PLL.PLLN = 40;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV4;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -196,9 +230,9 @@ void PeriphCommonClock_Config(void)
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 48;
-  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV17;
-  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV4;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 24;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_SAI1CLK|RCC_PLLSAI1_48M2CLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -208,7 +242,33 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief Tx Transfer completed callbacks.
+  * @param  hsai : pointer to a SAI_HandleTypeDef structure that contains
+  *                the configuration information for SAI module.
+  * @retval None
+  */
+void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai)
+{
+  /* NOTE : This function Should not be modified, when the callback is needed,
+            the HAL_SAI_TxCpltCallback could be implemented in the user file
+   */
+  UpdatePointer = PLAY_BUFF_SIZE/2;
+}
 
+/**
+  * @brief Tx Transfer Half completed callbacks
+  * @param  hsai : pointer to a SAI_HandleTypeDef structure that contains
+  *                the configuration information for SAI module.
+  * @retval None
+  */
+void HAL_SAI_TxHalfCpltCallback(SAI_HandleTypeDef *hsai)
+{
+  /* NOTE : This function Should not be modified, when the callback is needed,
+            the HAL_SAI_TxHalfCpltCallback could be implenetd in the user file
+   */
+  UpdatePointer = 0;
+}
 /* USER CODE END 4 */
 
 /**
@@ -220,6 +280,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  BSP_LED_On(LED5);
   while (1)
   {
   }

@@ -4,4 +4,4 @@
 ../USB_DEVICE/App/usbd_storage_if.c:255:8:STORAGE_IsWriteProtected_FS	16	static
 ../USB_DEVICE/App/usbd_storage_if.c:267:8:STORAGE_Read_FS	40	static
 ../USB_DEVICE/App/usbd_storage_if.c:303:8:STORAGE_Write_FS	40	static
-../USB_DEVICE/App/usbd_storage_if.c:353:8:STORAGE_GetMaxLun_FS	4	static
+../USB_DEVICE/App/usbd_storage_if.c:361:8:STORAGE_GetMaxLun_FS	4	static

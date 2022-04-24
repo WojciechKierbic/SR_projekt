@@ -57,16 +57,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SAI1_MCLK_A_Pin GPIO_PIN_2
-#define SAI1_MCLK_A_GPIO_Port GPIOE
-#define AUDIO_RESET_Pin GPIO_PIN_3
-#define AUDIO_RESET_GPIO_Port GPIOE
-#define SAI1_FS_A_Pin GPIO_PIN_4
-#define SAI1_FS_A_GPIO_Port GPIOE
-#define SAI1_SCK_A_Pin GPIO_PIN_5
-#define SAI1_SCK_A_GPIO_Port GPIOE
-#define SAI1_SD_A_Pin GPIO_PIN_6
-#define SAI1_SD_A_GPIO_Port GPIOE
+#define SAI1_MCK_Pin GPIO_PIN_2
+#define SAI1_MCK_GPIO_Port GPIOE
+#define AUDIO_RST_Pin GPIO_PIN_3
+#define AUDIO_RST_GPIO_Port GPIOE
+#define SAI1_FS_Pin GPIO_PIN_4
+#define SAI1_FS_GPIO_Port GPIOE
+#define SAI1_SCK_Pin GPIO_PIN_5
+#define SAI1_SCK_GPIO_Port GPIOE
+#define SAI1_SD_Pin GPIO_PIN_6
+#define SAI1_SD_GPIO_Port GPIOE
 #define MFX_IRQ_OUT_Pin GPIO_PIN_13
 #define MFX_IRQ_OUT_GPIO_Port GPIOC
 #define MAG_INT_Pin GPIO_PIN_1
@@ -210,7 +210,10 @@ void Error_Handler(void);
 #define XL_INT_Pin GPIO_PIN_1
 #define XL_INT_GPIO_Port GPIOE
 /* USER CODE BEGIN Private defines */
-
+#define AUDIO_SAIx_MCLK_ENABLE()             __HAL_RCC_GPIOE_CLK_ENABLE()
+#define AUDIO_SAIx_SCK_ENABLE()              __HAL_RCC_GPIOE_CLK_ENABLE()
+#define AUDIO_SAIx_FS_ENABLE()               __HAL_RCC_GPIOE_CLK_ENABLE()
+#define AUDIO_SAIx_SD_ENABLE()               __HAL_RCC_GPIOE_CLK_ENABLE()
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
