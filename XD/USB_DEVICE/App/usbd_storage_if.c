@@ -340,18 +340,26 @@ int8_t STORAGE_Write_FS (uint8_t lun,
   {
     if (needErase == 1)
     {
+      HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
       BSP_QSPI_Erase_Block(blk_addr * STORAGE_BLK_SIZ_USER);
+      HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
     }
   }
   else {
     if (needErase == 1)
     {
+      HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
       BSP_QSPI_Erase_Block(blk_addr * STORAGE_BLK_SIZ_USER);
+      HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
 
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
       BSP_QSPI_Write(buf, blk_addr * STORAGE_BLK_SIZ_USER, STORAGE_BLK_SIZ_USER);
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
     }
     else {
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
       BSP_QSPI_Write(buf, blk_addr * STORAGE_BLK_SIZ_USER, STORAGE_BLK_SIZ_USER);
+      HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
     }
   }
 
