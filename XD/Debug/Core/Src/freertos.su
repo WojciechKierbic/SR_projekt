@@ -1,0 +1,4 @@
+../Core/Src/freertos.c:68:6:vApplicationGetIdleTaskMemory	24	static
+../Core/Src/freertos.c:82:6:MX_FREERTOS_Init	72	static
+../Core/Src/freertos.c:118:6:appTaskBody	16	static
+../Core/Src/freertos.c:136:6:usbTaskBody	24	static
