@@ -230,7 +230,33 @@ int main(void)
       			  HAL_Delay(200);
       		  }
       	  }
-
+      	  while(tryb == 2)
+      	  {
+      		  uint8_t str_index[8];
+      		  int index_cpy = index;
+      		  sprintf(str_index, "Wiad %d", index_cpy);
+      		  BSP_LCD_GLASS_DisplayString(str_index);
+      		  if(BSP_JOY_GetState() == JOY_UP)
+      		  {
+      			  if(index_cpy < 9 && index_cpy <= index)
+      			  {
+      				  index++;
+      				  HAL_Delay(200);
+      			  }
+      		  }
+      		  if(BSP_JOY_GetState() == JOY_DOWN)
+      		  {
+      			  if(index > 0)
+      			  {
+      				  index--;
+      				  HAL_Delay(200);
+      			  }
+      		  }
+      		  if(BSP_JOY_GetState() == JOY_LEFT)
+      		  {
+      		 	BSP_LCD_GLASS_Clear();
+      		 	tryb = 1;
+      		  }
 
       		  if(BSP_JOY_GetState() == JOY_SEL)
       			 {
