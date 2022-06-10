@@ -22,7 +22,7 @@
 #include "dfsdm.h"
 #include "dma.h"
 #include "i2c.h"
-#include "lcd.h"
+
 #include "quadspi.h"
 #include "sai.h"
 #include "spi.h"
@@ -32,7 +32,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "stm32l476g_discovery_glass_lcd.h"
+
 #include "audio.h"
 #include "cs43l22.h"
 #include "stm32l476g_discovery_qspi.h"
@@ -122,7 +122,7 @@ int main(void)
   //MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-  MX_LCD_Init();
+
   MX_QUADSPI_Init();
   MX_SAI1_Init();
   MX_SPI2_Init();
@@ -151,6 +151,47 @@ int main(void)
 
 
 
+        if (QSPI_OK == BSP_QSPI_Init())
+        {
+      	  pQSPI_Info.FlashSize          = (uint32_t)0x00;
+      	  pQSPI_Info.EraseSectorSize    = (uint32_t)0x00;
+      	  pQSPI_Info.EraseSectorsNumber = (uint32_t)0x00;
+      	  pQSPI_Info.ProgPageSize       = (uint32_t)0x00;
+      	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
+      	  /* Read the QSPI memory info */
+      	  BSP_QSPI_GetInfo(&pQSPI_Info);
+
+      	  /* Test the correctness */
+      	  if((pQSPI_Info.FlashSize != 0x1000000) || (pQSPI_Info.EraseSectorSize != 0x1000)  ||
+      	    (pQSPI_Info.ProgPageSize != 0x100)  || (pQSPI_Info.EraseSectorsNumber != 4096) ||
+      	    (pQSPI_Info.ProgPagesNumber != 65536))
+      	  {
+
+      	  }
+      	  else
+      	  {
+      		  /*##-3- Erase QSPI memory ################################################*/
+      		  if(BSP_QSPI_Erase_Block(WRITE_READ_ADDR) != QSPI_OK)
+      		  {
+
+      	      }
+      	  }
+        }
+
+
+
+
+
+
+        int index = 0; //ilosc wiadomosci
+
+      for (uint32_t l = 0; l < 256; l++)
+      {
+        if(BSP_QSPI_Erase_Sector(l) != QSPI_OK)
+        {
+      	  Error_Handler();
+        }
+      }
 
 
   /* USER CODE END 2 */
@@ -159,6 +200,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
 
 
 
@@ -216,6 +259,14 @@ int main(void)
       			PlaybackStarted = 0;
       			  tryb = 1;
       			 }
+      	  }
+      	  while(tryb == 3)
+      	  {
+      		  if(BSP_JOY_GetState() == JOY_LEFT)
+      		  {
+
+      			  tryb = 1;
+      		  }
 
 
 
@@ -245,6 +296,12 @@ int main(void)
       		}
       		}
 
+
+
+
+      		tryb = 1;
+      		index++;
+      	  }
 
         /* USER CODE END 3 */
       }
