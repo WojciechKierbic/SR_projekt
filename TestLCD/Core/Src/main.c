@@ -130,7 +130,71 @@ int main(void)
   MX_USB_HOST_Init();
   MX_DFSDM1_Init();
   /* USER CODE BEGIN 2 */
+  if(HAL_OK != HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, RecBuff, 2048))
+    {
+         Error_Handler();
+     }
 
+
+  __HAL_SAI_ENABLE(&hsai_BlockA1);
+
+      if(CS43L22_ID != cs43l22_drv.ReadID(AUDIO_I2C_ADDRESS))
+        {
+          Error_Handler();
+        }
+      	audio_drv = &cs43l22_drv;
+        audio_drv->Reset(AUDIO_I2C_ADDRESS);
+        if(0 != audio_drv->Init(AUDIO_I2C_ADDRESS, OUTPUT_DEVICE_HEADPHONE, 90, AUDIO_FREQUENCY_44K))
+        {
+          Error_Handler();
+        }
+
+
+
+        BSP_LCD_GLASS_Init();
+
+
+        if (QSPI_OK == BSP_QSPI_Init())
+        {
+      	  pQSPI_Info.FlashSize          = (uint32_t)0x00;
+      	  pQSPI_Info.EraseSectorSize    = (uint32_t)0x00;
+      	  pQSPI_Info.EraseSectorsNumber = (uint32_t)0x00;
+      	  pQSPI_Info.ProgPageSize       = (uint32_t)0x00;
+      	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
+      	  /* Read the QSPI memory info */
+      	  BSP_QSPI_GetInfo(&pQSPI_Info);
+
+      	  /* Test the correctness */
+      	  if((pQSPI_Info.FlashSize != 0x1000000) || (pQSPI_Info.EraseSectorSize != 0x1000)  ||
+      	    (pQSPI_Info.ProgPageSize != 0x100)  || (pQSPI_Info.EraseSectorsNumber != 4096) ||
+      	    (pQSPI_Info.ProgPagesNumber != 65536))
+      	  {
+      		  BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      QSPI GET INFO : FAILED.", 1, SCROLL_SPEED_HIGH);
+      	  }
+      	  else
+      	  {
+      		  /*##-3- Erase QSPI memory ################################################*/
+      		  if(BSP_QSPI_Erase_Block(WRITE_READ_ADDR) != QSPI_OK)
+      		  {
+      			  BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      QSPI ERASE : FAILED.", 1, SCROLL_SPEED_HIGH);
+      	      }
+      	  }
+        }
+
+
+
+
+
+
+        int index = 0; //ilosc wiadomosci
+
+      for (uint32_t l = 0; l < 256; l++)
+      {
+        if(BSP_QSPI_Erase_Sector(l) != QSPI_OK)
+        {
+      	  Error_Handler();
+        }
+      }
 
   /* USER CODE END 2 */
 
@@ -140,10 +204,7 @@ int main(void)
   {
 
 
-	  if (tryb == -1)
-	  {
-		  BSP_LCD_GLASS_DisplayString((uint8_t *)"WITAM");
-	  }
+
       	  switch(BSP_JOY_GetState())
       	  {
       	  case JOY_DOWN: //tryb odtwarzania
@@ -153,21 +214,7 @@ int main(void)
       		  tryb = 1;
       		  break;
       	  }
-      	  while(tryb == 0) // nagrywanie
-      	  {
-      		  BSP_LCD_GLASS_DisplayString("NAGRAJ");
-      		  if(BSP_JOY_GetState() == JOY_SEL)
-      		  {
-      			  BSP_LCD_GLASS_Clear();
-      			  tryb = 3; // wybranie slota albo zaczecie nagrywania
-      			  HAL_Delay(200);
-      		  }
-      		  else if (BSP_JOY_GetState() == JOY_DOWN || BSP_JOY_GetState() == JOY_UP)
-      		  {
-      			  tryb = 1;
-      			  HAL_Delay(200);
-      		  }
-      	  }
+
       	  while(tryb == 1) //odtwarzanie
       	  {
       		  BSP_LCD_GLASS_DisplayString("ODTWORZ");
@@ -183,33 +230,7 @@ int main(void)
       			  HAL_Delay(200);
       		  }
       	  }
-      	  while(tryb == 2)
-      	  {
-      		  uint8_t str_index[8];
-      		  int index_cpy = index;
-      		  sprintf(str_index, "Wiad %d", index_cpy);
-      		  BSP_LCD_GLASS_DisplayString(str_index);
-      		  if(BSP_JOY_GetState() == JOY_UP)
-      		  {
-      			  if(index_cpy < 9 && index_cpy <= index)
-      			  {
-      				  index++;
-      				  HAL_Delay(200);
-      			  }
-      		  }
-      		  if(BSP_JOY_GetState() == JOY_DOWN)
-      		  {
-      			  if(index > 0)
-      			  {
-      				  index--;
-      				  HAL_Delay(200);
-      			  }
-      		  }
-      		  if(BSP_JOY_GetState() == JOY_LEFT)
-      		  {
-      		 	BSP_LCD_GLASS_Clear();
-      		 	tryb = 1;
-      		  }
+
 
       		  if(BSP_JOY_GetState() == JOY_SEL)
       			 {
