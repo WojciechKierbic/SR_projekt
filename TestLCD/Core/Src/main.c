@@ -130,6 +130,11 @@ int main(void)
   MX_USB_HOST_Init();
   MX_DFSDM1_Init();
   /* USER CODE BEGIN 2 */
+  if(HAL_OK != HAL_DFSDM_FilterRegularStart_DMA(&hdfsdm1_filter0, RecBuff, 2048))
+    {
+         Error_Handler();
+     }
+
 
 
   /* USER CODE END 2 */
@@ -141,6 +146,35 @@ int main(void)
 
 
 
+      		for(int k = 0; k < 1000; k++)
+      		{
+      		if(DmaRecHalfBuffCplt == 1)
+      		{
+      		      				      /* Store values on Play buff */
+      			for(i = 0; i < BUFFER_SIZE/2; i++)
+      			{
+      				filter_arr[2*i]     = SaturaLH((RecBuff[i] >> 8), -32768, 32767);
+      				filter_arr[(2*i)+1] = filter_arr[2*i];
+      			}
+      			if (BSP_QSPI_Write(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*k), BUFFER_SIZE/2) != QSPI_OK) Error_Handler();
+      			DmaRecHalfBuffCplt  = 0;
+      		}
+      		if(DmaRecBuffCplt == 1)
+      		{
+      			/* Store values on Play buff */
+      			for(i = BUFFER_SIZE/2; i < BUFFER_SIZE; i++)
+      			{
+      				filter_arr[2*i]     = SaturaLH((RecBuff[i] >> 8), -32768, 32767);
+      				filter_arr[(2*i)+1] = filter_arr[2*i];
+      			}
+      			if (BSP_QSPI_Write(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*k)+z, BUFFER_SIZE/2) != QSPI_OK) Error_Handler();
+      			DmaRecBuffCplt  = 0;
+      		}
+      		}
+
+
+
+      	  }
 
         /* USER CODE END 3 */
       }
