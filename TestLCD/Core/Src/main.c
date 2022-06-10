@@ -136,6 +136,22 @@ int main(void)
      }
 
 
+  __HAL_SAI_ENABLE(&hsai_BlockA1);
+
+      if(CS43L22_ID != cs43l22_drv.ReadID(AUDIO_I2C_ADDRESS))
+        {
+          Error_Handler();
+        }
+      	audio_drv = &cs43l22_drv;
+        audio_drv->Reset(AUDIO_I2C_ADDRESS);
+        if(0 != audio_drv->Init(AUDIO_I2C_ADDRESS, OUTPUT_DEVICE_HEADPHONE, 90, AUDIO_FREQUENCY_44K))
+        {
+          Error_Handler();
+        }
+
+
+
+
 
   /* USER CODE END 2 */
 
@@ -143,6 +159,63 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
+
+      		  if(BSP_JOY_GetState() == JOY_SEL)
+      			 {
+      			  for(int j = 0; j<2000; j++)
+      			  {
+      				BSP_QSPI_Read(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*j), 4*BUFFER_SIZE);
+
+      				if(DmaRecHalfBuffCplt == 1)
+      				    {
+      				      /* Store values on Play buff */
+      				      for(i = 0; i < BUFFER_SIZE/2; i++)
+      				      {
+      				        PlayBuff[2*i]     = SaturaLH((filter_arr[i] >> 8), -32768, 32767);
+      				        PlayBuff[(2*i)+1] = PlayBuff[2*i];
+      				      }
+      				      if(PlaybackStarted == 0)
+      				      {
+      				    	 if(HAL_OK != HAL_SAI_Transmit_DMA(&hsai_BlockA1, (uint8_t *) &PlayBuff[0], 2*BUFFER_SIZE))
+      				    	      				        {
+      				    	      				          Error_Handler();
+      				    	      				        }
+      				    	if(0 != audio_drv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) &PlayBuff[0], 2*BUFFER_SIZE))
+      				    	{
+      				    		Error_Handler();
+
+      				    	}
+
+
+      				    PlaybackStarted = 1;
+      				      }
+      				      DmaRecHalfBuffCplt  = 0;
+      				    }
+      				    if(DmaRecBuffCplt == 1)
+      				    {
+      				      /* Store values on Play buff */
+      				      for(i = BUFFER_SIZE/2; i < BUFFER_SIZE; i++)
+      				      {
+      				        PlayBuff[2*i]     = SaturaLH((filter_arr[i] >> 8), -32768, 32767);
+      				        PlayBuff[(2*i)+1] = PlayBuff[2*i];
+      				      }
+      				      DmaRecBuffCplt  = 0;
+      				    }
+
+      			 }
+      			if(0 != audio_drv->Stop(AUDIO_I2C_ADDRESS, CODEC_PDWN_HW))
+      					{
+      				Error_Handler();
+      					}
+      			if(HAL_SAI_DMAStop(&hsai_BlockA1) != HAL_OK)
+      			{
+      				Error_Handler();
+      			}
+      			PlaybackStarted = 0;
+      			  tryb = 1;
+      			 }
 
 
 
@@ -172,9 +245,6 @@ int main(void)
       		}
       		}
 
-
-
-      	  }
 
         /* USER CODE END 3 */
       }
