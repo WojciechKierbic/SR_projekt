@@ -70,7 +70,7 @@ extern SAI_HandleTypeDef hsai_BlockA1;
 extern DMA_HandleTypeDef hdma_sai1_a;
 int32_t                      RecBuff[2048];
 int16_t                      PlayBuff[4096];
-int32_t 					filter_arr[4096];
+int16_t 					filter_arr[4096];
 uint32_t                     PlaybackStarted         = 0;
 volatile int 				tryb = -1;//
 int flag = 0;
@@ -99,6 +99,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   uint32_t i;
+  int index_cpy = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -184,17 +185,18 @@ int main(void)
 
 
 
-
-
         int index = 0; //ilosc wiadomosci
 
-      for (uint32_t l = 0; l < 256; l++)
-      {
-        if(BSP_QSPI_Erase_Sector(l) != QSPI_OK)
-        {
-      	  Error_Handler();
-        }
-      }
+
+      //  BSP_QSPI_Erase_Chip();
+
+//      for (uint32_t l = 0; l < 256; l++){
+//
+//        if(BSP_QSPI_Erase_Sector(l) != QSPI_OK)
+//        {
+//      	  Error_Handler();
+//        }
+//      }
 
   /* USER CODE END 2 */
 
@@ -249,26 +251,33 @@ int main(void)
       	  }
       	  while(tryb == 2)
       	  {
+      		 if (index == 0)
+      		 {
+      			 BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      NIE MA WIADOMOSCI.", 1, SCROLL_SPEED_HIGH);
+      			 tryb = 1;
+      		 }
       		  uint8_t str_index[8];
-      		  int index_cpy = index;
       		  sprintf(str_index, "Wiad %d", index_cpy);
       		  BSP_LCD_GLASS_DisplayString(str_index);
       		  if(BSP_JOY_GetState() == JOY_UP)
       		  {
-      			  if(index_cpy < 9 && index_cpy <= index)
+      			  if(index_cpy < 9 && index_cpy < index)
       			  {
-      				  index++;
+      				  index_cpy++;
       				  HAL_Delay(200);
+      				BSP_LCD_GLASS_Clear();
       			  }
       		  }
       		  if(BSP_JOY_GetState() == JOY_DOWN)
       		  {
-      			  if(index > 0)
+      			  if(index_cpy > 1)
       			  {
-      				  index--;
+      				  index_cpy--;
       				  HAL_Delay(200);
+
       			  }
       		  }
+
       		  if(BSP_JOY_GetState() == JOY_LEFT)
       		  {
       		 	BSP_LCD_GLASS_Clear();
@@ -277,47 +286,22 @@ int main(void)
 
       		  if(BSP_JOY_GetState() == JOY_SEL)
       			 {
-      			  for(int j = 0; j<2000; j++)
+      			  for(int j = 0; j<100; j++)
       			  {
-      				BSP_QSPI_Read(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*j), 4*BUFFER_SIZE);
-
-      				if(DmaRecHalfBuffCplt == 1)
-      				    {
-      				      /* Store values on Play buff */
-      				      for(i = 0; i < BUFFER_SIZE/2; i++)
-      				      {
-      				        PlayBuff[2*i]     = SaturaLH((filter_arr[i] >> 8), -32768, 32767);
-      				        PlayBuff[(2*i)+1] = PlayBuff[2*i];
-      				      }
-      				      if(PlaybackStarted == 0)
-      				      {
-      				    	 if(HAL_OK != HAL_SAI_Transmit_DMA(&hsai_BlockA1, (uint8_t *) &PlayBuff[0], 2*BUFFER_SIZE))
-      				    	      				        {
-      				    	      				          Error_Handler();
-      				    	      				        }
-      				    	if(0 != audio_drv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) &PlayBuff[0], 2*BUFFER_SIZE))
-      				    	{
-      				    		Error_Handler();
-
-      				    	}
-
-
-      				    PlaybackStarted = 1;
-      				      }
-      				      DmaRecHalfBuffCplt  = 0;
-      				    }
-      				    if(DmaRecBuffCplt == 1)
-      				    {
-      				      /* Store values on Play buff */
-      				      for(i = BUFFER_SIZE/2; i < BUFFER_SIZE; i++)
-      				      {
-      				        PlayBuff[2*i]     = SaturaLH((filter_arr[i] >> 8), -32768, 32767);
-      				        PlayBuff[(2*i)+1] = PlayBuff[2*i];
-      				      }
-      				      DmaRecBuffCplt  = 0;
-      				    }
-
-      			 }
+      				BSP_QSPI_Read(PlayBuff, WRITE_READ_ADDR+(BUFFER_SIZE*j)+(index_cpy-1)*BUFFER_SIZE*2, 2*BUFFER_SIZE);
+      				if(PlaybackStarted == 0)
+      				{
+      					if(HAL_OK != HAL_SAI_Transmit_DMA(&hsai_BlockA1, (uint8_t *) &PlayBuff[0], 2*BUFFER_SIZE))
+      					{
+      						Error_Handler();
+      					}
+      					if(0 != audio_drv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) &PlayBuff[0], 2*BUFFER_SIZE))
+      					{
+      						Error_Handler();
+      					}
+      					PlaybackStarted = 1;
+      				}
+      			  }
       			if(0 != audio_drv->Stop(AUDIO_I2C_ADDRESS, CODEC_PDWN_HW))
       					{
       				Error_Handler();
@@ -342,7 +326,7 @@ int main(void)
       		BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      NAGRANIE.", 1, SCROLL_SPEED_HIGH);
       		BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      NAGRANIE.", 1, SCROLL_SPEED_HIGH);
 
-      		for(int k = 0; k < 1000; k++)
+      		for(int k = 0; k < 100; k++)
       		{
       		if(DmaRecHalfBuffCplt == 1)
       		{
@@ -352,7 +336,7 @@ int main(void)
       				filter_arr[2*i]     = SaturaLH((RecBuff[i] >> 8), -32768, 32767);
       				filter_arr[(2*i)+1] = filter_arr[2*i];
       			}
-      			if (BSP_QSPI_Write(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*k), BUFFER_SIZE/2) != QSPI_OK) Error_Handler();
+
       			DmaRecHalfBuffCplt  = 0;
       		}
       		if(DmaRecBuffCplt == 1)
@@ -363,9 +347,10 @@ int main(void)
       				filter_arr[2*i]     = SaturaLH((RecBuff[i] >> 8), -32768, 32767);
       				filter_arr[(2*i)+1] = filter_arr[2*i];
       			}
-      			if (BSP_QSPI_Write(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*k)+z, BUFFER_SIZE/2) != QSPI_OK) Error_Handler();
+
       			DmaRecBuffCplt  = 0;
       		}
+      		if (BSP_QSPI_Write(filter_arr, WRITE_READ_ADDR+(BUFFER_SIZE*k*2)+index*100*2*BUFFER_SIZE, BUFFER_SIZE*2) != QSPI_OK) Error_Handler();
       		}
 
 
@@ -375,6 +360,7 @@ int main(void)
 
       		tryb = 1;
       		index++;
+      		index_cpy = index;
       	  }
 
         /* USER CODE END 3 */
