@@ -204,7 +204,10 @@ int main(void)
   {
 
 
-
+	  if (tryb == -1)
+	  {
+		  BSP_LCD_GLASS_DisplayString((uint8_t *)"WITAM");
+	  }
       	  switch(BSP_JOY_GetState())
       	  {
       	  case JOY_DOWN: //tryb odtwarzania
@@ -214,7 +217,21 @@ int main(void)
       		  tryb = 1;
       		  break;
       	  }
-
+      	  while(tryb == 0) // nagrywanie
+      	  {
+      		  BSP_LCD_GLASS_DisplayString("NAGRAJ");
+      		  if(BSP_JOY_GetState() == JOY_SEL)
+      		  {
+      			  BSP_LCD_GLASS_Clear();
+      			  tryb = 3; // wybranie slota albo zaczecie nagrywania
+      			  HAL_Delay(200);
+      		  }
+      		  else if (BSP_JOY_GetState() == JOY_DOWN || BSP_JOY_GetState() == JOY_UP)
+      		  {
+      			  tryb = 1;
+      			  HAL_Delay(200);
+      		  }
+      	  }
       	  while(tryb == 1) //odtwarzanie
       	  {
       		  BSP_LCD_GLASS_DisplayString("ODTWORZ");
